@@ -34,12 +34,16 @@ public class AuthController {
 	private boolean securityEnable;
 	@PostMapping
 	LoginResponse login(@RequestBody @Valid LoginData loginData) {
+		if(securityEnable) {
+			LoginResponse response = new LoginResponse("", "ADMIN");
+			return response;
+		}
 		LOG.debug("login data are email {}, password {}", loginData.email, loginData.password);
 		Account account = accounting.getAccount(loginData.email);
 		if(account == null || !passwordEncoder.matches(loginData.password, account.getPasswordHash())) {
 			throw new BadRequestException("Wrong credentials");
 		}
-		LoginResponse response = new LoginResponse(getToken(loginData), securityEnable ? account.getRole() : "ADMIN");
+		LoginResponse response = new LoginResponse(getToken(loginData), account.getRole());
 		LOG.debug("accessToken: {}, role: {}", response.accessToken, response.role);
 		return response;
 	}
