@@ -14,12 +14,14 @@ import org.springframework.stereotype.Service;
 import telran.courses.dto.Course;
 import telran.courses.exceptions.ResourceNotFoundException;
 
-@Service
+
 public class CoursesServiceImpl implements CoursesService{
 	
 	private static final long serialVersionUID = 1L;
 
 	private static final int MILLIS_IN_MINUTES = 5000;
+	
+	private boolean flUpdate = false; 
 
 	@Value("${app.file.name}")
 	private transient String fileName; 
@@ -37,7 +39,7 @@ public class CoursesServiceImpl implements CoursesService{
 	public  Course addCourse(Course course) {
 	    course.id = generateId();
 	    Course res = add(course);
-	   
+	    flUpdate = true;
 	    return res;
 	}
 
@@ -66,11 +68,22 @@ public class CoursesServiceImpl implements CoursesService{
 	}
 
 	@Override
+	public Course getCourse(int id) {
+		Course course = courses.get(id);
+		if (course == null) {
+			throw new ResourceNotFoundException(String.format("course with id %d not found", id));
+		}
+		return course;
+	}
+
+
+	@Override
 	public Course removeCourse(int id) {
 		Course course = courses.remove(id);
 		if(course == null) {
 			throw new ResourceNotFoundException(String.format("course with id %d not found", id));
 		}
+		flUpdate = true;
 		return course;
 	}
 
@@ -80,34 +93,37 @@ public class CoursesServiceImpl implements CoursesService{
 		if(courseUpdated == null) {
 			throw new ResourceNotFoundException(String.format("course with id %d not found", id));
 		}
+		flUpdate = true;
 		return courseUpdated;
 	}
 	
 	
 	
 	private void restore() {
-		File inputFile = new File(fileName);
-		if (inputFile.exists()) {
-			try (ObjectInputStream input = new ObjectInputStream(new FileInputStream(inputFile))) {
-				CoursesServiceImpl coursesFromFile =  (CoursesServiceImpl) input.readObject();
-				this.courses = coursesFromFile.courses;
+			try (ObjectInputStream input = new ObjectInputStream(new FileInputStream(fileName))) {
+				Map<Integer,Course> coursesRestored =  (Map<Integer,Course>) input.readObject();
+				this.courses = coursesRestored;
 				LOG.debug("service has been restored from file {}", fileName);
 			} catch (FileNotFoundException e) {
 				LOG.warn("service has not been restored - no file {} found", fileName);;
 			} catch (Exception e) {
-				throw new RuntimeException(e.getMessage());
+				LOG.warn("service has not been restored by nested exception {} ", e.toString());
 			} 
-		}
 		
 	}
 	
-	private void save() {
-		try(ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(fileName))) {
-			output.writeObject(this);
-		} catch (Exception e) {
-			throw new RuntimeException(e.getMessage());
+	private boolean save() {
+		if(flUpdate) {
+			try(ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(fileName))) {
+				output.writeObject(courses);
+				flUpdate=false;
+				return true;
+			} catch (Exception e) {
+				throw new RuntimeException(e.getMessage());
+			}
 		}
 		
+		return false;
 	}
 	
 	@PostConstruct
@@ -115,16 +131,22 @@ public class CoursesServiceImpl implements CoursesService{
 		LOG.debug("interval: {}", interval);
 		restore();
 		Thread thread = new Thread(() -> {
+			LOG.debug("Thread {} created ", Thread.currentThread().getName());
+			boolean isSaved = false;
 			while(true) {
 				try {
 					Thread.sleep(interval*MILLIS_IN_MINUTES);
-					save();
+					isSaved = save();
 					LOG.debug("Saving");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 					LOG.debug("Saving is interrapted");
 				}
-				LOG.debug("Courses data saved into file {}", fileName);
+				if (isSaved) {
+					LOG.debug("courses data saved into file {}", fileName);
+				} else {
+					LOG.debug("courses have not been updated or saved");
+				}
 			}
 			
 		});
@@ -134,8 +156,12 @@ public class CoursesServiceImpl implements CoursesService{
 	
 	@PreDestroy
 	void saveInvocation() {
-		save();
-		LOG.debug("Courses data saved into file {}", fileName);
+		boolean isSaved = save();
+		if (isSaved) {
+			LOG.debug("courses data saved into file {}", fileName);
+		} else {
+			LOG.debug("courses have not been updated or saved");
+		}
 		
 	}
 	

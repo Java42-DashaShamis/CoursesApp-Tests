@@ -15,4 +15,6 @@ public interface CoursesService  extends Serializable{
 
 	Course updateCourse(int id, Course course);
 
+	Course getCourse(int id);
+
 }

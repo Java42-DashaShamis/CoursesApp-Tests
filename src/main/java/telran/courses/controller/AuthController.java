@@ -5,6 +5,7 @@ import java.util.Base64;
 import javax.validation.Valid;
 
 import org.slf4j.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
@@ -15,6 +16,7 @@ import telran.courses.dto.LoginResponse;
 import telran.courses.exceptions.BadRequestException;
 import telran.courses.security.Account;
 import telran.courses.security.AccountingManagement;
+import telran.courses.security.JWTUtils;
 
 @RestController
 @RequestMapping("/login")
@@ -32,9 +34,12 @@ public class AuthController {
 	}
 	@Value("${app.security.enable: true}")
 	private boolean securityEnable;
+	@Autowired
+	JWTUtils jwtUtils;
+	
 	@PostMapping
 	LoginResponse login(@RequestBody @Valid LoginData loginData) {
-		if(securityEnable) {
+		if(!securityEnable) {
 			LoginResponse response = new LoginResponse("", "ADMIN");
 			return response;
 		}
@@ -50,7 +55,7 @@ public class AuthController {
 
 	private String getToken(LoginData loginData) {
 		//"Basic <username:password> in Base64 code
-		byte[] code = String.format("%s:%s", loginData.email, loginData.password).getBytes();
-		return "Basic " + Base64.getEncoder().encodeToString(code);
+		
+		return "Bearer" + jwtUtils.create(loginData.email); 
 	}
 }

@@ -35,6 +35,13 @@ public class CoursesController {
 		return courses;
 	}
 	
+	@GetMapping("/{id}")
+	Course getCourse(@PathVariable(name = "id") int id) {
+		Course course = coursesService.getCourse(id);
+		LOG.debug("course with id {} returned to client", course.id);
+		return course;
+	}
+	
 	@DeleteMapping("/{id}")
 	Course removeCourse(@PathVariable(name = "id") int id) {
 		Course course = coursesService.removeCourse(id);
@@ -48,6 +55,7 @@ public class CoursesController {
 			throw new BadRequestException(String.format("new course has id: %d but updated course should have id %d",
 					course.id, id));
 		}
+		LOG.debug("new course for update {}", course);
 		Course courseUpdated = coursesService.updateCourse(id, course);
 		LOG.debug("course with id {} has been updated ", course.id);
 		return courseUpdated;
