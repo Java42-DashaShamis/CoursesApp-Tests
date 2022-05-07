@@ -10,6 +10,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,11 +20,13 @@ import telran.courses.dto.Course;
 import telran.courses.exceptions.BadRequestException;
 import telran.courses.exceptions.ResourceNotFoundException;
 import telran.courses.service.CoursesService;
+import telran.courses.service.CoursesServiceImpl;
 
 @SpringBootTest
 @AutoConfigureTestDatabase
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CoursesServiceTests {
+	static Logger LOG = LoggerFactory.getLogger(CoursesServiceTests.class);
 	private static final @NotEmpty String COURSE1 = "course1";
 	private static final @NotEmpty String LECTURER1 = "lecturer1";
 	private static final @Min(80) @Max(500) int HOURS1 = 100;
@@ -64,6 +68,9 @@ class CoursesServiceTests {
 		Course courseNotUpdated = coursesService.updateCourse(id1, courseTest);
 		assertEquals(courseNotUpdated, course1);
 		Course courseUpdated = coursesService.getCourse(id1);
+		/* V.R. Instead of many asserts it is possible to use the single one. 
+		 *   assertEquals(courseUpdated, courseTest);
+		 */
 		assertNotEquals(courseNotUpdated, courseUpdated);
 		assertEquals(courseNotUpdated.id, courseUpdated.id);
 		assertEquals(courseNotUpdated.course, courseUpdated.course);
@@ -76,8 +83,13 @@ class CoursesServiceTests {
 	@Test
 	@Order(4)
 	void removeCourseTest() {
+		Course c2 = coursesService.getCourse(id2);
 		Course courseRemoved = coursesService.removeCourse(id2);
 		assertEquals(courseRemoved, course2);
+		/*  V.R. The following assert isn't correct because
+		 *  getCourse() throws exception, but there isn't catch.
+		 *  
+		 */
 		assertNull(coursesService.getCourse(id2));
 	}
 

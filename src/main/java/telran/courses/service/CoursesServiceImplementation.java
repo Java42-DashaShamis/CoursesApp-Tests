@@ -55,6 +55,10 @@ public class CoursesServiceImplementation extends AbstractCoursesService {
 		courseRepository.deleteById(id);
 		return res;
 	}
+	/* V.R.
+	 *  It is very bad practice to change the names of files, methods
+	 *  and so on without reasons. 
+	 */
 	private Course getOldCourse(int id) {
 		if(!exists(id)) {
 			throw new ResourceNotFoundException(String.format("course with id %d is not found", id));
